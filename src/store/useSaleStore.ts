@@ -8,7 +8,11 @@ import type {
 } from '@/types/sale'
 import type { TandonId } from '@/types/tandon'
 import { STORAGE_KEYS } from '@/constants/storageKeys'
+import { USE_API } from '@/api/client'
+import { seladaApi } from '@/api/seladaOpsApi'
+import type { SalePayload } from '@/api/seladaOpsApi'
 import { calculateTotalValue } from '@/lib/salesCalculations'
+import { appPersistStorage } from './persistStorage'
 
 export interface SaleDraft {
   harvestId: string
@@ -25,9 +29,9 @@ export interface SaleDraft {
 
 interface SaleState {
   sales: SaleEntry[]
-  addSale: (draft: SaleDraft) => SaleEntry
-  updateSale: (id: string, patch: Partial<SaleDraft>) => void
-  deleteSale: (id: string) => void
+  addSale: (draft: SaleDraft) => Promise<SaleEntry>
+  updateSale: (id: string, patch: Partial<SaleDraft>) => Promise<void>
+  deleteSale: (id: string) => Promise<void>
   getSalesByHarvest: (harvestId: string) => SaleEntry[]
   getSalesByTandon: (tandonId: TandonId) => SaleEntry[]
   replaceAll: (sales: SaleEntry[]) => void
@@ -58,39 +62,77 @@ function buildEntry(draft: SaleDraft, existing?: SaleEntry): SaleEntry {
   }
 }
 
+function mergeDraft(existing: SaleEntry, patch: Partial<SaleDraft>): SaleDraft {
+  return {
+    harvestId: patch.harvestId ?? existing.harvestId,
+    tandonId: patch.tandonId ?? existing.tandonId,
+    date: patch.date ?? existing.date,
+    buyerCategory: patch.buyerCategory ?? existing.buyerCategory,
+    buyerName: patch.buyerName ?? existing.buyerName,
+    soldVolumeKg: patch.soldVolumeKg ?? existing.soldVolumeKg,
+    pricePerKg: patch.pricePerKg ?? existing.pricePerKg,
+    paymentStatus: patch.paymentStatus ?? existing.paymentStatus,
+    unsoldAction: patch.unsoldAction !== undefined ? patch.unsoldAction : existing.unsoldAction,
+    notes: patch.notes !== undefined ? patch.notes : existing.notes,
+  }
+}
+
+/** tandonId & totalValue tidak dikirim — keduanya diturunkan server dari batch panen. */
+function toPayload(draft: SaleDraft): SalePayload {
+  return {
+    harvestId: draft.harvestId,
+    date: draft.date,
+    buyerCategory: draft.buyerCategory,
+    buyerName: draft.buyerName,
+    soldVolumeKg: draft.soldVolumeKg,
+    pricePerKg: draft.pricePerKg,
+    paymentStatus: draft.paymentStatus,
+    unsoldAction: draft.unsoldAction,
+    notes: draft.notes,
+  }
+}
+
 export const useSaleStore = create<SaleState>()(
   persist(
     (set, get) => ({
       sales: [],
 
-      addSale: (draft) => {
+      addSale: async (draft) => {
+        if (USE_API) {
+          const entry = await seladaApi.createSale(toPayload(draft))
+          set((state) => ({ sales: [...state.sales, entry] }))
+          return entry
+        }
         const entry = buildEntry(draft)
         set((state) => ({ sales: [...state.sales, entry] }))
         return entry
       },
 
-      updateSale: (id, patch) =>
-        set((state) => ({
-          sales: state.sales.map((s) => {
-            if (s.id !== id) return s
-            const merged: SaleDraft = {
-              harvestId: patch.harvestId ?? s.harvestId,
-              tandonId: patch.tandonId ?? s.tandonId,
-              date: patch.date ?? s.date,
-              buyerCategory: patch.buyerCategory ?? s.buyerCategory,
-              buyerName: patch.buyerName ?? s.buyerName,
-              soldVolumeKg: patch.soldVolumeKg ?? s.soldVolumeKg,
-              pricePerKg: patch.pricePerKg ?? s.pricePerKg,
-              paymentStatus: patch.paymentStatus ?? s.paymentStatus,
-              unsoldAction: patch.unsoldAction !== undefined ? patch.unsoldAction : s.unsoldAction,
-              notes: patch.notes !== undefined ? patch.notes : s.notes,
-            }
-            return buildEntry(merged, s)
-          }),
-        })),
+      updateSale: async (id, patch) => {
+        const existing = get().sales.find((s) => s.id === id)
+        if (!existing) return
+        const merged = mergeDraft(existing, patch)
 
-      deleteSale: (id) =>
-        set((state) => ({ sales: state.sales.filter((s) => s.id !== id) })),
+        if (USE_API) {
+          const updated = await seladaApi.updateSale(id, toPayload(merged))
+          set((state) => ({
+            sales: state.sales.map((s) => (s.id === id ? updated : s)),
+          }))
+          return
+        }
+        set((state) => ({
+          sales: state.sales.map((s) =>
+            s.id === id ? buildEntry(merged, existing) : s,
+          ),
+        }))
+      },
+
+      deleteSale: async (id) => {
+        if (USE_API) {
+          await seladaApi.deleteSale(id)
+        }
+        set((state) => ({ sales: state.sales.filter((s) => s.id !== id) }))
+      },
 
       getSalesByHarvest: (harvestId) =>
         get()
@@ -104,6 +146,6 @@ export const useSaleStore = create<SaleState>()(
 
       replaceAll: (sales) => set({ sales }),
     }),
-    { name: STORAGE_KEYS.sales },
+    { name: STORAGE_KEYS.sales, storage: appPersistStorage },
   ),
 )

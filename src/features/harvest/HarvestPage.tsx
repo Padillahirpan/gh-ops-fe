@@ -5,6 +5,7 @@ import { TANDON_IDS } from '@/constants/tandonConfig'
 import { useHarvestStore } from '@/store/useHarvestStore'
 import { useSaleStore } from '@/store/useSaleStore'
 import { toast } from '@/store/useToastStore'
+import { USE_API, getApiErrorMessage } from '@/api/client'
 import { HarvestForm } from './HarvestForm'
 import { HarvestHistoryTable } from './HarvestHistoryTable'
 import { HarvestDetailModal } from './HarvestDetailModal'
@@ -38,33 +39,43 @@ export function HarvestPage() {
     })
   }, [harvests, filterTandon, filterFrom, filterTo])
 
-  function handleSubmit(draft: Parameters<typeof addHarvest>[0]) {
-    if (editEntry) {
-      updateHarvest(editEntry.id, draft)
-      toast.success('Data panen diperbarui')
-      setEditEntry(null)
-    } else {
-      addHarvest(draft)
-      toast.success(
-        'Data panen tersimpan',
-        'Status tandon otomatis diubah menjadi Sanitasi',
-      )
+  async function handleSubmit(draft: Parameters<typeof addHarvest>[0]) {
+    try {
+      if (editEntry) {
+        await updateHarvest(editEntry.id, draft)
+        toast.success('Data panen diperbarui')
+        setEditEntry(null)
+      } else {
+        await addHarvest(draft)
+        toast.success(
+          'Data panen tersimpan',
+          'Status tandon otomatis diubah menjadi Sanitasi',
+        )
+      }
+      setTab('riwayat')
+    } catch (error) {
+      toast.error('Gagal menyimpan panen', getApiErrorMessage(error))
     }
-    setTab('riwayat')
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return
-    const relatedSales = sales.filter((s) => s.harvestId === deleteTarget.id).length
-    deleteHarvest(deleteTarget.id)
-    toast.success(
-      'Data panen dihapus',
-      relatedSales > 0
-        ? `${relatedSales} entri penjualan terkait tetap tersimpan (batch menjadi tidak valid)`
-        : undefined,
-    )
-    setDeleteTarget(null)
-    setViewEntry(null)
+    const relatedSalesCount = sales.filter((s) => s.harvestId === deleteTarget.id).length
+    try {
+      await deleteHarvest(deleteTarget.id)
+      toast.success(
+        'Data panen dihapus',
+        USE_API && relatedSalesCount > 0
+          ? `${relatedSalesCount} entri penjualan terkait ikut terhapus`
+          : relatedSalesCount > 0
+            ? `${relatedSalesCount} entri penjualan terkait tetap tersimpan (batch menjadi tidak valid)`
+            : undefined,
+      )
+      setDeleteTarget(null)
+      setViewEntry(null)
+    } catch (error) {
+      toast.error('Gagal menghapus panen', getApiErrorMessage(error))
+    }
   }
 
   return (

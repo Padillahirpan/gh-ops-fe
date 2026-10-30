@@ -7,7 +7,7 @@ export type KpiDeltaTone = 'success' | 'danger' | 'neutral'
 export interface KpiCardProps {
   label: string
   value: string
-  unit?: string
+  unit?: string | undefined
   icon: LucideIcon
   iconColor?: string | undefined
   delta?: {

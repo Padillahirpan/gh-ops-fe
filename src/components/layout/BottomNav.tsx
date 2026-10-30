@@ -12,7 +12,10 @@ export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
       className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border-default)] bg-[var(--bg-surface)] lg:hidden"
       aria-label="Navigasi utama mobile"
     >
-      <ul className="grid grid-cols-5">
+      <ul
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${NAV_ITEMS.length}, minmax(0, 1fr))` }}
+      >
         {NAV_ITEMS.map((item) => {
           const isActive = activePage === item.key
           const Icon = item.icon
@@ -30,7 +33,7 @@ export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
                 ].join(' ')}
               >
                 <Icon className="h-5 w-5" aria-hidden />
-                <span className="font-medium">{item.label}</span>
+                <span className="font-medium">{item.shortLabel ?? item.label}</span>
               </button>
             </li>
           )

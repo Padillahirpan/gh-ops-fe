@@ -3,11 +3,15 @@ import { persist } from 'zustand/middleware'
 import type { HarvestEntry, HarvestRejectionBreakdown } from '@/types/harvest'
 import type { TandonId } from '@/types/tandon'
 import { STORAGE_KEYS } from '@/constants/storageKeys'
+import { USE_API } from '@/api/client'
+import { seladaApi } from '@/api/seladaOpsApi'
 import {
   calculateAvgWeightG,
   calculateSuccessRate,
 } from '@/lib/harvestCalculations'
 import { useTandonStore } from './useTandonStore'
+import { useSaleStore } from './useSaleStore'
+import { appPersistStorage } from './persistStorage'
 
 export interface HarvestDraft {
   tandonId: TandonId
@@ -21,9 +25,9 @@ export interface HarvestDraft {
 
 interface HarvestState {
   harvests: HarvestEntry[]
-  addHarvest: (draft: HarvestDraft) => HarvestEntry
-  updateHarvest: (id: string, patch: Partial<HarvestDraft>) => void
-  deleteHarvest: (id: string) => void
+  addHarvest: (draft: HarvestDraft) => Promise<HarvestEntry>
+  updateHarvest: (id: string, patch: Partial<HarvestDraft>) => Promise<void>
+  deleteHarvest: (id: string) => Promise<void>
   getHarvestsByTandon: (tandonId: TandonId) => HarvestEntry[]
   replaceAll: (harvests: HarvestEntry[]) => void
 }
@@ -51,39 +55,68 @@ function buildEntry(draft: HarvestDraft, existing?: HarvestEntry): HarvestEntry 
   }
 }
 
+function mergeDraft(existing: HarvestEntry, patch: Partial<HarvestDraft>): HarvestDraft {
+  return {
+    tandonId: patch.tandonId ?? existing.tandonId,
+    date: patch.date ?? existing.date,
+    totalWeightKg: patch.totalWeightKg ?? existing.totalWeightKg,
+    totalPlants: patch.totalPlants ?? existing.totalPlants,
+    rejected: patch.rejected ?? existing.rejected,
+    reasons: patch.reasons ?? existing.reasons,
+    notes: patch.notes !== undefined ? patch.notes : existing.notes,
+  }
+}
+
 export const useHarvestStore = create<HarvestState>()(
   persist(
     (set, get) => ({
       harvests: [],
 
-      addHarvest: (draft) => {
+      addHarvest: async (draft) => {
+        if (USE_API) {
+          const entry = await seladaApi.createHarvest(draft)
+          set((state) => ({ harvests: [...state.harvests, entry] }))
+          // Side effect "tandon → Sanitizing" terjadi di server; sinkronkan state tandon
+          await useTandonStore.getState().refreshFromApi()
+          return entry
+        }
         const entry = buildEntry(draft)
         set((state) => ({ harvests: [...state.harvests, entry] }))
-        useTandonStore.getState().setStatus(draft.tandonId, 'Sanitizing')
+        await useTandonStore.getState().setStatus(draft.tandonId, 'Sanitizing')
         return entry
       },
 
-      updateHarvest: (id, patch) =>
-        set((state) => ({
-          harvests: state.harvests.map((h) => {
-            if (h.id !== id) return h
-            const merged: HarvestDraft = {
-              tandonId: patch.tandonId ?? h.tandonId,
-              date: patch.date ?? h.date,
-              totalWeightKg: patch.totalWeightKg ?? h.totalWeightKg,
-              totalPlants: patch.totalPlants ?? h.totalPlants,
-              rejected: patch.rejected ?? h.rejected,
-              reasons: patch.reasons ?? h.reasons,
-              notes: patch.notes !== undefined ? patch.notes : h.notes,
-            }
-            return buildEntry(merged, h)
-          }),
-        })),
+      updateHarvest: async (id, patch) => {
+        const existing = get().harvests.find((h) => h.id === id)
+        if (!existing) return
+        const merged = mergeDraft(existing, patch)
 
-      deleteHarvest: (id) =>
+        if (USE_API) {
+          const updated = await seladaApi.updateHarvest(id, merged)
+          set((state) => ({
+            harvests: state.harvests.map((h) => (h.id === id ? updated : h)),
+          }))
+          return
+        }
         set((state) => ({
-          harvests: state.harvests.filter((h) => h.id !== id),
-        })),
+          harvests: state.harvests.map((h) =>
+            h.id === id ? buildEntry(merged, existing) : h,
+          ),
+        }))
+      },
+
+      deleteHarvest: async (id) => {
+        if (USE_API) {
+          await seladaApi.deleteHarvest(id)
+          set((state) => ({ harvests: state.harvests.filter((h) => h.id !== id) }))
+          // Server cascade: penjualan terkait batch ini ikut terhapus
+          useSaleStore.setState((state) => ({
+            sales: state.sales.filter((s) => s.harvestId !== id),
+          }))
+          return
+        }
+        set((state) => ({ harvests: state.harvests.filter((h) => h.id !== id) }))
+      },
 
       getHarvestsByTandon: (tandonId) =>
         get().harvests
@@ -92,6 +125,6 @@ export const useHarvestStore = create<HarvestState>()(
 
       replaceAll: (harvests) => set({ harvests }),
     }),
-    { name: STORAGE_KEYS.harvests },
+    { name: STORAGE_KEYS.harvests, storage: appPersistStorage },
   ),
 )

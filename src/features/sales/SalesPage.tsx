@@ -6,6 +6,7 @@ import { BUYER_CATEGORIES, PAYMENT_STATUS } from '@/constants/salesConfig'
 import { useSaleStore } from '@/store/useSaleStore'
 import { useHarvestStore } from '@/store/useHarvestStore'
 import { toast } from '@/store/useToastStore'
+import { getApiErrorMessage } from '@/api/client'
 import { SaleForm } from './SaleForm'
 import { SalesHistoryTable } from './SalesHistoryTable'
 import { SaleDetailModal } from './SaleDetailModal'
@@ -55,24 +56,32 @@ export function SalesPage() {
     [filteredSales],
   )
 
-  function handleSubmit(draft: Parameters<typeof addSale>[0]) {
-    if (editEntry) {
-      updateSale(editEntry.id, draft)
-      toast.success('Data penjualan diperbarui')
-      setEditEntry(null)
-    } else {
-      addSale(draft)
-      toast.success('Data penjualan tersimpan')
+  async function handleSubmit(draft: Parameters<typeof addSale>[0]) {
+    try {
+      if (editEntry) {
+        await updateSale(editEntry.id, draft)
+        toast.success('Data penjualan diperbarui')
+        setEditEntry(null)
+      } else {
+        await addSale(draft)
+        toast.success('Data penjualan tersimpan')
+      }
+      setTab('riwayat')
+    } catch (error) {
+      toast.error('Gagal menyimpan penjualan', getApiErrorMessage(error))
     }
-    setTab('riwayat')
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return
-    deleteSale(deleteTarget.id)
-    toast.success('Data penjualan dihapus')
-    setDeleteTarget(null)
-    setViewEntry(null)
+    try {
+      await deleteSale(deleteTarget.id)
+      toast.success('Data penjualan dihapus')
+      setDeleteTarget(null)
+      setViewEntry(null)
+    } catch (error) {
+      toast.error('Gagal menghapus penjualan', getApiErrorMessage(error))
+    }
   }
 
   return (

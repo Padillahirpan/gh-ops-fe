@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   tandons: 'hydro-tandons-v1',
   harvests: 'hydro-harvests-v1',
   sales: 'hydro-sales-v1',
+  costs: 'hydro-costs-v1',
   uiPreferences: 'hydro-ui-preferences-v1',
   demoSeededFlag: 'hydro-demo-seeded-v1',
 } as const

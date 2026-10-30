@@ -15,6 +15,7 @@ import { useHarvestStore } from '@/store/useHarvestStore'
 import { useSaleStore } from '@/store/useSaleStore'
 import { toast } from '@/store/useToastStore'
 import { seedDemoData } from '@/data/useSeedDemoData'
+import { USE_API, API_BASE_URL } from '@/api/client'
 import { STORAGE_KEYS } from '@/constants/storageKeys'
 import type { Tandon, TandonId } from '@/types/tandon'
 import type { HarvestEntry } from '@/types/harvest'
@@ -211,7 +212,10 @@ export function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader title="Data" subtitle="Backup, restore, dan reset" />
+        <CardHeader
+          title="Data"
+          subtitle={USE_API ? 'Data tersimpan di server API' : 'Backup, restore, dan reset'}
+        />
         <CardBody className="flex flex-wrap gap-3">
           <Button
             variant="secondary"
@@ -221,37 +225,41 @@ export function SettingsPage() {
             Export Data (JSON)
           </Button>
 
-          <Button
-            variant="secondary"
-            leftIcon={<Upload className="h-4 w-4" aria-hidden />}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Import Data (JSON)
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={handleImportFile}
-            aria-label="Pilih file JSON untuk import"
-          />
+          {!USE_API && (
+            <>
+              <Button
+                variant="secondary"
+                leftIcon={<Upload className="h-4 w-4" aria-hidden />}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Import Data (JSON)
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportFile}
+                aria-label="Pilih file JSON untuk import"
+              />
 
-          <Button
-            variant="secondary"
-            leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
-            onClick={handleLoadDemo}
-          >
-            Muat Ulang Data Demo
-          </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<RefreshCw className="h-4 w-4" aria-hidden />}
+                onClick={handleLoadDemo}
+              >
+                Muat Ulang Data Demo
+              </Button>
 
-          <Button
-            variant="danger"
-            leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset Semua Data
-          </Button>
+              <Button
+                variant="danger"
+                leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
+                onClick={() => setConfirmReset(true)}
+              >
+                Reset Semua Data
+              </Button>
+            </>
+          )}
         </CardBody>
       </Card>
 
@@ -263,11 +271,14 @@ export function SettingsPage() {
             <div className="space-y-1 text-sm text-[var(--text-secondary)]">
               <p>
                 <span className="font-semibold text-[var(--text-primary)]">Selada Ops</span>{' '}
-                v1.0.0 — Frontend (localStorage mode)
+                v1.1.0 — {USE_API ? 'Mode API (server)' : 'Frontend (localStorage mode)'}
               </p>
               <p>
                 Sistem manajemen greenhouse hidroponik: 3 tandon · 2 GH · 3.000
-                lubang tanam. Data tersimpan lokal di browser Anda.
+                lubang tanam.{' '}
+                {USE_API
+                  ? `Data tersimpan di server API (${API_BASE_URL}).`
+                  : 'Data tersimpan lokal di browser Anda.'}
               </p>
               <p className="text-xs text-[var(--text-muted)]">
                 Stack: Vite + React 19 + TypeScript + Tailwind v4 + Zustand + Recharts

@@ -5,6 +5,7 @@ import {
   ShoppingCart,
   Settings,
   Sprout,
+  Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { PageKey } from '@/types/ui'
@@ -12,15 +13,18 @@ import type { PageKey } from '@/types/ui'
 export interface NavItem {
   key: PageKey
   label: string
+  /** Label pendek untuk BottomNav mobile (ruang terbatas). */
+  shortLabel?: string | undefined
   icon: LucideIcon
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'dashboard', label: 'Dashboard', shortLabel: 'Home', icon: LayoutDashboard },
   { key: 'calendar', label: 'Kalender', icon: CalendarDays },
   { key: 'harvest', label: 'Panen', icon: Wheat },
-  { key: 'sales', label: 'Penjualan', icon: ShoppingCart },
-  { key: 'settings', label: 'Pengaturan', icon: Settings },
+  { key: 'sales', label: 'Penjualan', shortLabel: 'Jual', icon: ShoppingCart },
+  { key: 'costs', label: 'Biaya & Modal', shortLabel: 'Biaya', icon: Wallet },
+  { key: 'settings', label: 'Pengaturan', shortLabel: 'Atur', icon: Settings },
 ]
 
 export function AppBrand({ collapsed = false }: { collapsed?: boolean }) {

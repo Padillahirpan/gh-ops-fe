@@ -6,6 +6,8 @@ import {
   TANDON_STATUS_LABEL,
 } from '@/constants/tandonConfig'
 import { useTandonStore } from '@/store/useTandonStore'
+import { toast } from '@/store/useToastStore'
+import { getApiErrorMessage } from '@/api/client'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
@@ -35,7 +37,24 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
       return
     }
     setDateError((prev) => ({ ...prev, [id]: undefined }))
-    setSowingDate(id, value || null)
+    void setSowingDate(id, value || null).catch((error) => {
+      toast.error('Gagal menyimpan tanggal semai', getApiErrorMessage(error))
+    })
+  }
+
+  function handleStatusChange(id: TandonId, status: TandonStatus) {
+    void setStatus(id, status).catch((error) => {
+      toast.error('Gagal mengubah status tandon', getApiErrorMessage(error))
+    })
+  }
+
+  function handleResetCycle() {
+    if (!resetTarget) return
+    const target = resetTarget
+    setResetTarget(null)
+    void resetTandon(target).catch((error) => {
+      toast.error('Gagal mereset siklus', getApiErrorMessage(error))
+    })
   }
 
   return (
@@ -103,7 +122,7 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
                 label="Status Tandon"
                 value={tandon.status}
                 onChange={(e) =>
-                  setStatus(id, e.target.value as TandonStatus)
+                  handleStatusChange(id, e.target.value as TandonStatus)
                 }
                 options={(Object.keys(TANDON_STATUS_LABEL) as TandonStatus[]).map(
                   (status) => ({
@@ -133,10 +152,7 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
         title="Reset Siklus Tandon"
         body={`Semua jadwal event untuk tandon ini akan dihapus (tanggal semai dikosongkan, status kembali ke Kosong). Data panen & penjualan TIDAK terhapus. Lanjutkan?`}
         confirmLabel="Reset Siklus"
-        onConfirm={() => {
-          if (resetTarget) resetTandon(resetTarget)
-          setResetTarget(null)
-        }}
+        onConfirm={handleResetCycle}
         onCancel={() => setResetTarget(null)}
       />
     </div>

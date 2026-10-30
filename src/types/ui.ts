@@ -24,4 +24,5 @@ export type PageKey =
   | 'calendar'
   | 'harvest'
   | 'sales'
+  | 'costs'
   | 'settings'
