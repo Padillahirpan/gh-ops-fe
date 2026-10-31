@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useId } from 'react'
+import { Plus } from 'lucide-react'
 import type { SaleEntry } from '@/types/sale'
 import type { TandonId } from '@/types/tandon'
 import { TANDON_IDS } from '@/constants/tandonConfig'
@@ -7,15 +8,17 @@ import { useSaleStore } from '@/store/useSaleStore'
 import { useHarvestStore } from '@/store/useHarvestStore'
 import { toast } from '@/store/useToastStore'
 import { getApiErrorMessage } from '@/api/client'
+import { useAuthSession } from '@/features/auth/useAuth'
+import { ReadOnlyBanner } from '@/features/auth/ReadOnlyBanner'
 import { SaleForm } from './SaleForm'
 import { SalesHistoryTable } from './SalesHistoryTable'
 import { SaleDetailModal } from './SaleDetailModal'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { formatCurrencyRp } from '@/lib/formatters'
-
-type SalesTab = 'form' | 'riwayat'
 
 export function SalesPage() {
   const sales = useSaleStore((s) => s.sales)
@@ -23,8 +26,10 @@ export function SalesPage() {
   const updateSale = useSaleStore((s) => s.updateSale)
   const deleteSale = useSaleStore((s) => s.deleteSale)
   const harvests = useHarvestStore((s) => s.harvests)
+  const canEdit = useAuthSession().canEdit
 
-  const [tab, setTab] = useState<SalesTab>('form')
+  const formId = useId()
+  const [formOpen, setFormOpen] = useState(false)
   const [editEntry, setEditEntry] = useState<SaleEntry | null>(null)
   const [viewEntry, setViewEntry] = useState<SaleEntry | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SaleEntry | null>(null)
@@ -56,17 +61,31 @@ export function SalesPage() {
     [filteredSales],
   )
 
+  function closeForm() {
+    setFormOpen(false)
+    setEditEntry(null)
+  }
+
+  function openCreateForm() {
+    setEditEntry(null)
+    setFormOpen(true)
+  }
+
+  function openEditForm(entry: SaleEntry) {
+    setEditEntry(entry)
+    setFormOpen(true)
+  }
+
   async function handleSubmit(draft: Parameters<typeof addSale>[0]) {
     try {
       if (editEntry) {
         await updateSale(editEntry.id, draft)
         toast.success('Data penjualan diperbarui')
-        setEditEntry(null)
       } else {
         await addSale(draft)
         toast.success('Data penjualan tersimpan')
       }
-      setTab('riwayat')
+      closeForm()
     } catch (error) {
       toast.error('Gagal menyimpan penjualan', getApiErrorMessage(error))
     }
@@ -86,126 +105,121 @@ export function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div
-        className="flex gap-1 rounded-md border border-[var(--border-default)] bg-[var(--bg-surface-hover)] p-1"
-        role="tablist"
-        aria-label="Tab penjualan"
-      >
-        {(
-          [
-            { key: 'form', label: 'Form Input' },
-            { key: 'riwayat', label: `Riwayat Penjualan (${sales.length})` },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => {
-              setTab(t.key)
-              if (t.key === 'form') setEditEntry(null)
-            }}
-            className={[
-              'h-11 flex-1 rounded px-4 text-sm font-medium transition-colors',
-              tab === t.key
-                ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm ring-1 ring-[var(--border-strong)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]',
-            ].join(' ')}
+      {!canEdit && <ReadOnlyBanner />}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)]">
+          Riwayat Penjualan · <span className="font-mono tabular-nums">{sales.length}</span> transaksi
+        </h2>
+        {canEdit && (
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+            onClick={openCreateForm}
           >
-            {t.label}
-          </button>
-        ))}
+            Input Data Penjualan
+          </Button>
+        )}
       </div>
 
-      {tab === 'form' ? (
-        <div role="tabpanel" aria-label="Form input penjualan">
-          <SaleForm
-            key={editEntry?.id ?? 'new'}
-            editEntry={editEntry}
-            onSubmit={handleSubmit}
-          />
-        </div>
-      ) : (
-        <div role="tabpanel" aria-label="Riwayat penjualan" className="space-y-4">
-          <div className="grid gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 xl:grid-cols-5">
-            <Select
-              label="Tandon"
-              value={filterTandon}
-              onChange={(e) => setFilterTandon(e.target.value)}
-              options={[
-                { value: '', label: 'Semua tandon' },
-                ...TANDON_IDS.map((id: TandonId) => ({ value: id, label: id })),
-              ]}
-            />
-            <Select
-              label="Kategori Pembeli"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              options={[
-                { value: '', label: 'Semua kategori' },
-                ...BUYER_CATEGORIES.map((c) => ({ value: c.key, label: c.shortLabel })),
-              ]}
-            />
-            <Select
-              label="Status Bayar"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              options={[
-                { value: '', label: 'Semua status' },
-                ...PAYMENT_STATUS.map((p) => ({ value: p.key, label: p.shortLabel ?? p.label })),
-              ]}
-            />
-            <DatePicker
-              label="Dari Tanggal"
-              value={filterFrom}
-              onChange={(e) => setFilterFrom(e.target.value)}
-            />
-            <DatePicker
-              label="Sampai Tanggal"
-              value={filterTo}
-              onChange={(e) => setFilterTo(e.target.value)}
-            />
-          </div>
+      <div className="grid gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 xl:grid-cols-5">
+        <Select
+          label="Tandon"
+          value={filterTandon}
+          onChange={(e) => setFilterTandon(e.target.value)}
+          options={[
+            { value: '', label: 'Semua tandon' },
+            ...TANDON_IDS.map((id: TandonId) => ({ value: id, label: id })),
+          ]}
+        />
+        <Select
+          label="Kategori Pembeli"
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          options={[
+            { value: '', label: 'Semua kategori' },
+            ...BUYER_CATEGORIES.map((c) => ({ value: c.key, label: c.shortLabel })),
+          ]}
+        />
+        <Select
+          label="Status Bayar"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          options={[
+            { value: '', label: 'Semua status' },
+            ...PAYMENT_STATUS.map((p) => ({ value: p.key, label: p.shortLabel ?? p.label })),
+          ]}
+        />
+        <DatePicker
+          label="Dari Tanggal"
+          value={filterFrom}
+          onChange={(e) => setFilterFrom(e.target.value)}
+        />
+        <DatePicker
+          label="Sampai Tanggal"
+          value={filterTo}
+          onChange={(e) => setFilterTo(e.target.value)}
+        />
+      </div>
 
-          {filteredSales.length > 0 && (
-            <div
-              className="flex items-center justify-between rounded-lg border px-4 py-3"
-              style={{
-                borderColor: 'var(--status-success)',
-                backgroundColor: 'color-mix(in srgb, var(--status-success) 8%, transparent)',
-              }}
-            >
-              <p className="text-sm text-[var(--text-secondary)]">
-                Total omzet ({filteredSales.length} transaksi terfilter)
-              </p>
-              <p className="font-mono text-lg font-bold tabular-nums text-[var(--status-success)]">
-                {formatCurrencyRp(totalPageValue)}
-              </p>
-            </div>
-          )}
-
-          <SalesHistoryTable
-            sales={filteredSales}
-            harvestDates={harvestDates}
-            onView={setViewEntry}
-            onEdit={(entry) => {
-              setEditEntry(entry)
-              setTab('form')
-            }}
-            onDelete={setDeleteTarget}
-          />
+      {filteredSales.length > 0 && (
+        <div
+          className="flex items-center justify-between rounded-lg border px-4 py-3"
+          style={{
+            borderColor: 'var(--status-success)',
+            backgroundColor: 'color-mix(in srgb, var(--status-success) 8%, transparent)',
+          }}
+        >
+          <p className="text-sm text-[var(--text-secondary)]">
+            Total omzet ({filteredSales.length} transaksi terfilter)
+          </p>
+          <p className="font-mono text-lg font-bold tabular-nums text-[var(--status-success)]">
+            {formatCurrencyRp(totalPageValue)}
+          </p>
         </div>
       )}
 
+      <SalesHistoryTable
+        sales={filteredSales}
+        harvestDates={harvestDates}
+        readOnly={!canEdit}
+        onView={setViewEntry}
+        onEdit={openEditForm}
+        onDelete={setDeleteTarget}
+      />
+
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={editEntry ? 'Edit Data Penjualan' : 'Input Data Penjualan'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeForm}>
+              Batal
+            </Button>
+            <Button type="submit" form={formId} variant="primary">
+              {editEntry ? 'Perbarui Data Penjualan' : 'Simpan Data Penjualan'}
+            </Button>
+          </>
+        }
+      >
+        <SaleForm
+          key={editEntry?.id ?? 'new'}
+          formId={formId}
+          editEntry={editEntry}
+          onSubmit={handleSubmit}
+        />
+      </Modal>
+
       <SaleDetailModal
         entry={viewEntry}
+        readOnly={!canEdit}
         harvestDate={viewEntry ? harvestDates[viewEntry.harvestId] : undefined}
         onClose={() => setViewEntry(null)}
         onEdit={(entry) => {
           setViewEntry(null)
-          setEditEntry(entry)
-          setTab('form')
+          openEditForm(entry)
         }}
         onDelete={(entry) => {
           setViewEntry(null)

@@ -34,10 +34,11 @@ interface ErrorEnvelope {
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
+    // credentials include: cookie session auth ikut terkirim (same-origin via proxy).
     const options: RequestInit =
       init?.body !== undefined
-        ? { ...init, headers: { 'Content-Type': 'application/json' } }
-        : { ...init }
+        ? { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json' } }
+        : { credentials: 'include', ...init }
     response = await fetch(`${API_BASE_URL}${path}`, options)
   } catch {
     throw new ApiError(

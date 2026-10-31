@@ -21,6 +21,8 @@ export interface HarvestDetailModalProps {
   onClose: () => void
   onEdit: (entry: HarvestEntry) => void
   onDelete: (entry: HarvestEntry) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 export function HarvestDetailModal({
@@ -28,6 +30,7 @@ export function HarvestDetailModal({
   onClose,
   onEdit,
   onDelete,
+  readOnly = false,
 }: HarvestDetailModalProps) {
   if (!entry) return null
   const badge = getWeightBadge(entry.avgWeightG)
@@ -42,22 +45,24 @@ export function HarvestDetailModal({
       onClose={onClose}
       title={`Detail Panen · ${cfg.name}`}
       footer={
-        <>
-          <Button
-            variant="danger"
-            leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
-            onClick={() => onDelete(entry)}
-          >
-            Hapus
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<Pencil className="h-4 w-4" aria-hidden />}
-            onClick={() => onEdit(entry)}
-          >
-            Edit
-          </Button>
-        </>
+        !readOnly ? (
+          <>
+            <Button
+              variant="danger"
+              leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
+              onClick={() => onDelete(entry)}
+            >
+              Hapus
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Pencil className="h-4 w-4" aria-hidden />}
+              onClick={() => onEdit(entry)}
+            >
+              Edit
+            </Button>
+          </>
+        ) : undefined
       }
     >
       <dl className="space-y-3 text-sm">

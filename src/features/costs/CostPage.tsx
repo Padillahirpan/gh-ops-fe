@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useId } from 'react'
+import { Plus } from 'lucide-react'
 import type {
   BatchCostSummary,
   CostEntryView,
@@ -11,25 +12,32 @@ import type { CostDraft } from '@/store/useCostStore'
 import { toast } from '@/store/useToastStore'
 import { getApiErrorMessage, USE_API } from '@/api/client'
 import { seladaApi } from '@/api/seladaOpsApi'
+import { useAuthSession } from '@/features/auth/useAuth'
+import { ReadOnlyBanner } from '@/features/auth/ReadOnlyBanner'
 import { CostForm } from './CostForm'
 import { CostHistoryTable } from './CostHistoryTable'
 import { CostDetailModal } from './CostDetailModal'
 import { CostingOverviewPanel } from './CostingOverviewPanel'
 import { CostingBatchModal } from './CostingBatchModal'
+import { Modal } from '@/components/ui/Modal'
+import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { formatCurrencyRp } from '@/lib/formatters'
 
-type CostTab = 'form' | 'riwayat' | 'rekap'
+type CostTab = 'riwayat' | 'rekap'
 
 export function CostPage() {
   const costs = useCostStore((s) => s.costs)
   const addCost = useCostStore((s) => s.addCost)
   const updateCost = useCostStore((s) => s.updateCost)
   const deleteCost = useCostStore((s) => s.deleteCost)
+  const canEdit = useAuthSession().canEdit
 
-  const [tab, setTab] = useState<CostTab>('form')
+  const formId = useId()
+  const [tab, setTab] = useState<CostTab>('riwayat')
+  const [formOpen, setFormOpen] = useState(false)
   const [editEntry, setEditEntry] = useState<CostEntryView | null>(null)
   const [viewEntry, setViewEntry] = useState<CostEntryView | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CostEntryView | null>(null)
@@ -80,17 +88,31 @@ export function CostPage() {
     [filteredCosts],
   )
 
+  function closeForm() {
+    setFormOpen(false)
+    setEditEntry(null)
+  }
+
+  function openCreateForm() {
+    setEditEntry(null)
+    setFormOpen(true)
+  }
+
+  function openEditForm(entry: CostEntryView) {
+    setEditEntry(entry)
+    setFormOpen(true)
+  }
+
   async function handleSubmit(draft: CostDraft) {
     try {
       if (editEntry) {
         await updateCost(editEntry.id, draft)
         toast.success('Data biaya diperbarui')
-        setEditEntry(null)
       } else {
         await addCost(draft)
         toast.success('Data biaya tersimpan')
       }
-      setTab('riwayat')
+      closeForm()
     } catch (error) {
       toast.error('Gagal menyimpan biaya', getApiErrorMessage(error))
     }
@@ -114,8 +136,7 @@ export function CostPage() {
       toast.error('Entri biaya tidak ditemukan', 'Data mungkin sudah dihapus.')
       return
     }
-    setEditEntry(entry)
-    setTab('form')
+    openEditForm(entry)
     toast.info(
       'Pindahkan ke batch tertentu',
       'Pilih batch panen di kolom "Batch Panen (Pindah Manual)".',
@@ -124,6 +145,8 @@ export function CostPage() {
 
   return (
     <div className="space-y-6">
+      {!canEdit && <ReadOnlyBanner />}
+
       <div
         className="flex gap-1 rounded-md border border-[var(--border-default)] bg-[var(--bg-surface-hover)] p-1"
         role="tablist"
@@ -131,7 +154,6 @@ export function CostPage() {
       >
         {(
           [
-            { key: 'form', label: 'Form Input' },
             { key: 'riwayat', label: `Riwayat Biaya (${costs.length})` },
             { key: 'rekap', label: 'Rekap per Batch' },
           ] as const
@@ -141,10 +163,7 @@ export function CostPage() {
             type="button"
             role="tab"
             aria-selected={tab === t.key}
-            onClick={() => {
-              setTab(t.key)
-              if (t.key === 'form') setEditEntry(null)
-            }}
+            onClick={() => setTab(t.key)}
             className={[
               'h-11 flex-1 rounded px-4 text-sm font-medium transition-colors',
               tab === t.key
@@ -157,17 +176,23 @@ export function CostPage() {
         ))}
       </div>
 
-      {tab === 'form' ? (
-        <div role="tabpanel" aria-label="Form input biaya">
-          <CostForm
-            key={editEntry?.id ?? 'new'}
-            editEntry={editEntry}
-            cycles={cycles}
-            onSubmit={handleSubmit}
-          />
-        </div>
-      ) : tab === 'riwayat' ? (
+      {tab === 'riwayat' ? (
         <div role="tabpanel" aria-label="Riwayat biaya" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-[var(--text-secondary)]">
+              Riwayat Biaya · <span className="font-mono tabular-nums">{costs.length}</span> entri
+            </h2>
+            {canEdit && (
+              <Button
+                variant="primary"
+                leftIcon={<Plus className="h-4 w-4" aria-hidden />}
+                onClick={openCreateForm}
+              >
+                Input Data Biaya
+              </Button>
+            )}
+          </div>
+
           <div className="grid gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] p-4 sm:grid-cols-2 xl:grid-cols-5">
             <Select
               label="Untuk"
@@ -231,28 +256,55 @@ export function CostPage() {
           <CostHistoryTable
             costs={filteredCosts}
             batchCodes={batchCodes}
+            readOnly={!canEdit}
             onView={setViewEntry}
-            onEdit={(entry) => {
-              setEditEntry(entry)
-              setTab('form')
-            }}
+            onEdit={openEditForm}
             onDelete={setDeleteTarget}
           />
         </div>
       ) : (
         <div role="tabpanel" aria-label="Rekap biaya per batch">
-          <CostingOverviewPanel onViewBatch={setViewBatch} onMoveUnassigned={handleMoveUnassigned} />
+          <CostingOverviewPanel
+            onViewBatch={setViewBatch}
+            onMoveUnassigned={handleMoveUnassigned}
+            readOnly={!canEdit}
+          />
         </div>
       )}
 
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={editEntry ? 'Edit Data Biaya' : 'Input Data Biaya'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeForm}>
+              Batal
+            </Button>
+            <Button type="submit" form={formId} variant="primary">
+              {editEntry ? 'Perbarui Data Biaya' : 'Simpan Data Biaya'}
+            </Button>
+          </>
+        }
+      >
+        <CostForm
+          key={editEntry?.id ?? 'new'}
+          formId={formId}
+          editEntry={editEntry}
+          cycles={cycles}
+          onSubmit={handleSubmit}
+        />
+      </Modal>
+
       <CostDetailModal
         entry={viewEntry}
+        readOnly={!canEdit}
         batchCode={viewEntry ? (batchCodes[viewEntry.assignedCycleId ?? ''] ?? undefined) : undefined}
         onClose={() => setViewEntry(null)}
         onEdit={(entry) => {
           setViewEntry(null)
-          setEditEntry(entry)
-          setTab('form')
+          openEditForm(entry)
         }}
         onDelete={(entry) => {
           setViewEntry(null)

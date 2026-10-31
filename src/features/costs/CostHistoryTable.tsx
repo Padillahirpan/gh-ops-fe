@@ -16,6 +16,8 @@ export interface CostHistoryTableProps {
   onView: (entry: CostEntryView) => void
   onEdit: (entry: CostEntryView) => void
   onDelete: (entry: CostEntryView) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 export function CostHistoryTable({
@@ -24,6 +26,7 @@ export function CostHistoryTable({
   onView,
   onEdit,
   onDelete,
+  readOnly = false,
 }: CostHistoryTableProps) {
   const columns: Array<DataTableColumn<CostEntryView>> = [
     {
@@ -151,22 +154,26 @@ export function CostHistoryTable({
           >
             <Eye className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Edit biaya ${row.description}`}
-            onClick={() => onEdit(row)}
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Hapus biaya ${row.description}`}
-            onClick={() => onDelete(row)}
-          >
-            <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
-          </Button>
+          {!readOnly && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit biaya ${row.description}`}
+                onClick={() => onEdit(row)}
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Hapus biaya ${row.description}`}
+                onClick={() => onDelete(row)}
+              >
+                <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
+              </Button>
+            </>
+          )}
         </TableRowActions>
       ),
     },
@@ -181,7 +188,7 @@ export function CostHistoryTable({
       initialSortDirection="desc"
       emptyIcon={Wallet}
       emptyTitle="Belum ada data biaya"
-      emptySubtitle="Catat pengeluaran pertama Anda lewat tab Form Input."
+      emptySubtitle="Klik tombol Input Data Biaya untuk mencatat pengeluaran pertama."
       ariaLabel="Tabel riwayat biaya"
     />
   )

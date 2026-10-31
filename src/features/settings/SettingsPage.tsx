@@ -7,6 +7,7 @@ import {
   Sun,
   Moon,
   Info,
+  LogOut,
 } from 'lucide-react'
 import type { Theme } from '@/types/ui'
 import { useUIStore } from '@/store/useUIStore'
@@ -16,6 +17,10 @@ import { useSaleStore } from '@/store/useSaleStore'
 import { toast } from '@/store/useToastStore'
 import { seedDemoData } from '@/data/useSeedDemoData'
 import { USE_API, API_BASE_URL } from '@/api/client'
+import { authClient } from '@/api/authClient'
+import { useAuthSession } from '@/features/auth/useAuth'
+import { UserManagementSection } from '@/features/auth/UserManagementSection'
+import { useDataSyncStore } from '@/store/useDataSyncStore'
 import { STORAGE_KEYS } from '@/constants/storageKeys'
 import type { Tandon, TandonId } from '@/types/tandon'
 import type { HarvestEntry } from '@/types/harvest'
@@ -48,12 +53,20 @@ export function SettingsPage() {
   const setTheme = useUIStore((s) => s.setTheme)
   const fontSize = useUIStore((s) => s.fontSize)
   const setFontSize = useUIStore((s) => s.setFontSize)
+  const { user, isAdmin } = useAuthSession()
 
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmResetStep2, setConfirmResetStep2] = useState(false)
   const [confirmImport, setConfirmImport] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
   const [pendingImport, setPendingImport] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleLogout() {
+    // Reset status sinkronisasi agar boot ulang (hydrate) saat login berikutnya.
+    useDataSyncStore.setState({ status: 'idle', error: null })
+    await authClient.signOut()
+  }
 
   function handleExport() {
     const payload = {
@@ -123,6 +136,26 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
+      {USE_API && user && (
+        <Card>
+          <CardHeader
+            title="Akun"
+            subtitle={`${user.name} · ${user.email} — role ${isAdmin ? 'Admin (penuh)' : 'User (lihat-saja)'}`}
+          />
+          <CardBody>
+            <Button
+              variant="secondary"
+              leftIcon={<LogOut className="h-4 w-4" aria-hidden />}
+              onClick={() => setConfirmLogout(true)}
+            >
+              Keluar (Logout)
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
+      {USE_API && isAdmin && user && <UserManagementSection currentUserId={user.id} />}
+
       <Card>
         <CardHeader title="Tema" subtitle="Tampilan terang atau gelap" />
         <CardBody className="flex flex-wrap items-center gap-4">
@@ -287,6 +320,19 @@ export function SettingsPage() {
           </div>
         </CardBody>
       </Card>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Keluar dari Aplikasi"
+        body={`Anda akan logout sebagai ${user?.name ?? ''}. Anda perlu login kembali untuk memakai aplikasi. Lanjutkan?`}
+        confirmLabel="Ya, Keluar"
+        cancelLabel="Tidak"
+        onConfirm={() => {
+          setConfirmLogout(false)
+          void handleLogout()
+        }}
+        onCancel={() => setConfirmLogout(false)}
+      />
 
       <ConfirmDialog
         open={confirmImport}

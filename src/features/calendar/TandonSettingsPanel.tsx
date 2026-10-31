@@ -8,6 +8,8 @@ import {
 import { useTandonStore } from '@/store/useTandonStore'
 import { toast } from '@/store/useToastStore'
 import { getApiErrorMessage } from '@/api/client'
+import { useAuthSession } from '@/features/auth/useAuth'
+import { ReadOnlyBanner } from '@/features/auth/ReadOnlyBanner'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
@@ -27,6 +29,7 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
 
   const [resetTarget, setResetTarget] = useState<TandonId | null>(null)
   const [dateError, setDateError] = useState<Partial<Record<TandonId, string>>>({})
+  const canEdit = useAuthSession().canEdit
 
   function handleDateChange(id: TandonId, value: string) {
     if (value && value > todayISO()) {
@@ -59,6 +62,8 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
 
   return (
     <div className="space-y-4">
+      {!canEdit && <ReadOnlyBanner />}
+
       {(Object.keys(tandons) as TandonId[]).map((id) => {
         const tandon: Tandon = tandons[id]
         const cfg = TANDON_CONFIG[id]
@@ -107,6 +112,7 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
                 label="Tanggal Semai (HSS 0)"
                 value={tandon.sowingDate ?? ''}
                 max={todayISO()}
+                disabled={!canEdit}
                 onChange={(e) => handleDateChange(id, e.target.value)}
                 errorText={dateError[id]}
                 helperText={
@@ -121,6 +127,7 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
               <Select
                 label="Status Tandon"
                 value={tandon.status}
+                disabled={!canEdit}
                 onChange={(e) =>
                   handleStatusChange(id, e.target.value as TandonStatus)
                 }
@@ -133,14 +140,20 @@ export function TandonSettingsPanel({ focusTandonId }: TandonSettingsPanelProps)
               />
 
               <div className="sm:col-span-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
-                  onClick={() => setResetTarget(id)}
-                >
-                  Reset Siklus Ini
-                </Button>
+                {canEdit ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<RotateCcw className="h-4 w-4" aria-hidden />}
+                    onClick={() => setResetTarget(id)}
+                  >
+                    Reset Siklus Ini
+                  </Button>
+                ) : (
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Reset siklus hanya untuk Admin.
+                  </p>
+                )}
               </div>
             </div>
           </section>

@@ -16,6 +16,8 @@ export interface CostingOverviewPanelProps {
   onViewBatch: (batch: BatchCostSummary) => void
   /** Buka form edit untuk memindahkan biaya tak terkelompok ke batch tertentu. */
   onMoveUnassigned: (item: UnassignedCostItem) => void
+  /** Mode lihat-saja: tombol pindah manual disembunyikan. */
+  readOnly?: boolean
 }
 
 const FILTER_OPTIONS: Array<{ key: CostingFilterTandon; label: string }> = [
@@ -25,7 +27,7 @@ const FILTER_OPTIONS: Array<{ key: CostingFilterTandon; label: string }> = [
   { key: 'T3', label: 'T3' },
 ]
 
-export function CostingOverviewPanel({ onViewBatch, onMoveUnassigned }: CostingOverviewPanelProps) {
+export function CostingOverviewPanel({ onViewBatch, onMoveUnassigned, readOnly = false }: CostingOverviewPanelProps) {
   const overview = useCostingStore((s) => s.overview)
   const loading = useCostingStore((s) => s.loading)
   const error = useCostingStore((s) => s.error)
@@ -210,9 +212,11 @@ export function CostingOverviewPanel({ onViewBatch, onMoveUnassigned }: CostingO
                       <span className="font-mono text-sm font-semibold tabular-nums text-[var(--text-primary)]">
                         {formatCurrencyRpCompact(item.chargedAmount)}
                       </span>
-                      <Button variant="secondary" size="sm" onClick={() => onMoveUnassigned(item)}>
-                        Pindahkan Manual
-                      </Button>
+                      {!readOnly && (
+                        <Button variant="secondary" size="sm" onClick={() => onMoveUnassigned(item)}>
+                          Pindahkan Manual
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

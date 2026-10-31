@@ -22,6 +22,8 @@ export interface SaleDetailModalProps {
   onClose: () => void
   onEdit: (entry: SaleEntry) => void
   onDelete: (entry: SaleEntry) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 export function SaleDetailModal({
@@ -30,6 +32,7 @@ export function SaleDetailModal({
   onClose,
   onEdit,
   onDelete,
+  readOnly = false,
 }: SaleDetailModalProps) {
   if (!entry) return null
 
@@ -44,22 +47,24 @@ export function SaleDetailModal({
       onClose={onClose}
       title="Detail Penjualan"
       footer={
-        <>
-          <Button
-            variant="danger"
-            leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
-            onClick={() => onDelete(entry)}
-          >
-            Hapus
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<Pencil className="h-4 w-4" aria-hidden />}
-            onClick={() => onEdit(entry)}
-          >
-            Edit
-          </Button>
-        </>
+        !readOnly ? (
+          <>
+            <Button
+              variant="danger"
+              leftIcon={<Trash2 className="h-4 w-4" aria-hidden />}
+              onClick={() => onDelete(entry)}
+            >
+              Hapus
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Pencil className="h-4 w-4" aria-hidden />}
+              onClick={() => onEdit(entry)}
+            >
+              Edit
+            </Button>
+          </>
+        ) : undefined
       }
     >
       <dl className="space-y-3 text-sm">

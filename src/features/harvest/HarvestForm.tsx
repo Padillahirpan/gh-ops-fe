@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Save } from 'lucide-react'
 import type {
   HarvestEntry,
   HarvestRejectionBreakdown,
@@ -23,7 +22,6 @@ import { Select } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { DatePicker } from '@/components/ui/DatePicker'
-import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { TandonColorDot } from '@/components/ui/TandonColorDot'
@@ -32,6 +30,8 @@ import type { HarvestDraft } from '@/store/useHarvestStore'
 export interface HarvestFormProps {
   onSubmit: (draft: HarvestDraft) => void
   editEntry?: HarvestEntry | null
+  /** Id elemen <form> — tombol submit ditempatkan parent (footer modal). */
+  formId: string
 }
 
 interface FormErrors {
@@ -43,7 +43,7 @@ interface FormErrors {
   reasons?: string
 }
 
-export function HarvestForm({ onSubmit, editEntry }: HarvestFormProps) {
+export function HarvestForm({ onSubmit, editEntry, formId }: HarvestFormProps) {
   const [tandonId, setTandonId] = useState<TandonId | ''>(editEntry?.tandonId ?? '')
   const [date, setDate] = useState(editEntry?.date ?? todayISO())
   const [totalWeightKg, setTotalWeightKg] = useState(
@@ -123,7 +123,7 @@ export function HarvestForm({ onSubmit, editEntry }: HarvestFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-6 xl:grid-cols-[1fr_320px]">
+    <form id={formId} onSubmit={handleSubmit} noValidate className="grid gap-6 xl:grid-cols-[1fr_300px]">
       <Card>
         <CardHeader
           title={editEntry ? `Edit Data Panen` : 'Input Data Panen'}
@@ -252,14 +252,10 @@ export function HarvestForm({ onSubmit, editEntry }: HarvestFormProps) {
             placeholder="Kondisi panen, cuaca, observasi lain…"
             onChange={(e) => setNotes(e.target.value)}
           />
-
-          <Button type="submit" size="lg" leftIcon={<Save className="h-4 w-4" aria-hidden />}>
-            {editEntry ? 'Perbarui Data Panen' : 'Simpan Data Panen'}
-          </Button>
         </CardBody>
       </Card>
 
-      <Card className="h-fit xl:sticky xl:top-24">
+      <Card className="h-fit">
         <CardHeader title="Live Preview" subtitle="Perhitungan realtime" />
         <CardBody className="space-y-4">
           {tandonId && (

@@ -9,13 +9,15 @@ export interface ModalProps {
   title: string
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 const SIZE_STYLES = {
   sm: 'max-w-sm',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
+  // Dialog lebar untuk form: mendekati full-width viewport, dibatasi max-w-5xl.
+  xl: 'max-w-5xl',
 }
 
 const FOCUSABLE_SELECTOR =
@@ -79,7 +81,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
       role="presentation"
     >
       <div
@@ -93,11 +95,14 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={[
-          'relative w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-xl',
+          // Tinggi dialog dibatasi (margin atas-bawah p-4/sm:p-8) agar tidak
+          // pernah mentok tepi layar; header & footer tetap terlihat, hanya
+          // body yang scroll.
+          'relative flex max-h-[calc(100vh-2rem)] flex-col rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] shadow-xl sm:max-h-[calc(100vh-4rem)]',
           SIZE_STYLES[size],
         ].join(' ')}
       >
-        <header className="flex items-center justify-between border-b border-[var(--border-default)] px-5 py-4">
+        <header className="flex shrink-0 items-center justify-between border-b border-[var(--border-default)] px-5 py-4">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
           <button
             type="button"
@@ -109,10 +114,10 @@ export function Modal({
           </button>
         </header>
 
-        <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
         {footer && (
-          <footer className="flex justify-end gap-2 border-t border-[var(--border-default)] px-5 py-4">
+          <footer className="flex shrink-0 justify-end gap-2 border-t border-[var(--border-default)] px-5 py-4">
             {footer}
           </footer>
         )}

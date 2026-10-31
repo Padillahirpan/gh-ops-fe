@@ -9,6 +9,11 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Proxy same-origin agar cookie session auth (HttpOnly, SameSite) berjalan
+    // mulus di dev — FE memanggil /api... tanpa cross-origin.
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+    },
   },
   resolve: {
     alias: {

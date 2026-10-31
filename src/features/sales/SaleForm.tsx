@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Save } from 'lucide-react'
 import type {
   BuyerCategory,
   PaymentStatus,
@@ -28,7 +27,6 @@ import { Select } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { DatePicker } from '@/components/ui/DatePicker'
-import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { TandonColorDot } from '@/components/ui/TandonColorDot'
 import { useHarvestStore } from '@/store/useHarvestStore'
@@ -39,6 +37,8 @@ import type { HarvestEntry } from '@/types/harvest'
 export interface SaleFormProps {
   onSubmit: (draft: SaleDraft) => void
   editEntry?: SaleEntry | null
+  /** Id elemen <form> — tombol submit ditempatkan parent (footer modal). */
+  formId: string
 }
 
 interface FormErrors {
@@ -51,7 +51,7 @@ interface FormErrors {
   paymentStatus?: string
 }
 
-export function SaleForm({ onSubmit, editEntry }: SaleFormProps) {
+export function SaleForm({ onSubmit, editEntry, formId }: SaleFormProps) {
   const harvests = useHarvestStore((s) => s.harvests)
   const sales = useSaleStore((s) => s.sales)
 
@@ -157,7 +157,7 @@ export function SaleForm({ onSubmit, editEntry }: SaleFormProps) {
   )
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-6 xl:grid-cols-[1fr_320px]">
+    <form id={formId} onSubmit={handleSubmit} noValidate className="grid gap-6 xl:grid-cols-[1fr_300px]">
       <Card>
         <CardHeader
           title={editEntry ? 'Edit Data Penjualan' : 'Input Data Penjualan'}
@@ -268,14 +268,10 @@ export function SaleForm({ onSubmit, editEntry }: SaleFormProps) {
             placeholder="Syarat pembayaran, kontak, dll…"
             onChange={(e) => setNotes(e.target.value)}
           />
-
-          <Button type="submit" size="lg" leftIcon={<Save className="h-4 w-4" aria-hidden />}>
-            {editEntry ? 'Perbarui Data Penjualan' : 'Simpan Data Penjualan'}
-          </Button>
         </CardBody>
       </Card>
 
-      <Card className="h-fit xl:sticky xl:top-24">
+      <Card className="h-fit">
         <CardHeader title="Live Preview" subtitle="Perhitungan realtime" />
         <CardBody className="space-y-4">
           {selectedHarvest ? (

@@ -14,6 +14,8 @@ export interface CostDetailModalProps {
   onClose: () => void
   onEdit: (entry: CostEntryView) => void
   onDelete: (entry: CostEntryView) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -25,7 +27,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-export function CostDetailModal({ entry, batchCode, onClose, onEdit, onDelete }: CostDetailModalProps) {
+export function CostDetailModal({ entry, batchCode, onClose, onEdit, onDelete, readOnly = false }: CostDetailModalProps) {
   return (
     <Modal
       open={entry !== null}
@@ -33,7 +35,7 @@ export function CostDetailModal({ entry, batchCode, onClose, onEdit, onDelete }:
       title="Detail Biaya"
       size="md"
       footer={
-        entry && (
+        entry && !readOnly ? (
           <>
             <Button
               variant="secondary"
@@ -50,7 +52,7 @@ export function CostDetailModal({ entry, batchCode, onClose, onEdit, onDelete }:
               Hapus
             </Button>
           </>
-        )
+        ) : undefined
       }
     >
       {entry && (

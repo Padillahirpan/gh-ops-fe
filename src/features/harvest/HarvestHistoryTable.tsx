@@ -24,6 +24,8 @@ export interface HarvestHistoryTableProps {
   onView: (entry: HarvestEntry) => void
   onEdit: (entry: HarvestEntry) => void
   onDelete: (entry: HarvestEntry) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 export function HarvestHistoryTable({
@@ -31,6 +33,7 @@ export function HarvestHistoryTable({
   onView,
   onEdit,
   onDelete,
+  readOnly = false,
 }: HarvestHistoryTableProps) {
   const columns: Array<DataTableColumn<HarvestEntry>> = [
     {
@@ -118,22 +121,26 @@ export function HarvestHistoryTable({
           >
             <Eye className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Edit panen ${formatDateID(row.date)}`}
-            onClick={() => onEdit(row)}
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Hapus panen ${formatDateID(row.date)}`}
-            onClick={() => onDelete(row)}
-          >
-            <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
-          </Button>
+          {!readOnly && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit panen ${formatDateID(row.date)}`}
+                onClick={() => onEdit(row)}
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Hapus panen ${formatDateID(row.date)}`}
+                onClick={() => onDelete(row)}
+              >
+                <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
+              </Button>
+            </>
+          )}
         </TableRowActions>
       ),
     },
@@ -148,7 +155,7 @@ export function HarvestHistoryTable({
       initialSortDirection="desc"
       emptyIcon={Wheat}
       emptyTitle="Belum ada data panen"
-      emptySubtitle="Catat panen pertama Anda lewat tab Form Input."
+      emptySubtitle="Klik tombol Input Data Panen untuk mencatat hasil panen pertama."
       ariaLabel="Tabel riwayat panen"
     />
   )

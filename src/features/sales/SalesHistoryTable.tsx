@@ -19,6 +19,8 @@ export interface SalesHistoryTableProps {
   onView: (entry: SaleEntry) => void
   onEdit: (entry: SaleEntry) => void
   onDelete: (entry: SaleEntry) => void
+  /** Mode lihat-saja: tombol edit/hapus disembunyikan. */
+  readOnly?: boolean
 }
 
 export function SalesHistoryTable({
@@ -27,6 +29,7 @@ export function SalesHistoryTable({
   onView,
   onEdit,
   onDelete,
+  readOnly = false,
 }: SalesHistoryTableProps) {
   const columns: Array<DataTableColumn<SaleEntry>> = [
     {
@@ -121,22 +124,26 @@ export function SalesHistoryTable({
           >
             <Eye className="h-4 w-4" aria-hidden />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Edit penjualan ke ${row.buyerName}`}
-            onClick={() => onEdit(row)}
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Hapus penjualan ke ${row.buyerName}`}
-            onClick={() => onDelete(row)}
-          >
-            <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
-          </Button>
+          {!readOnly && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit penjualan ke ${row.buyerName}`}
+                onClick={() => onEdit(row)}
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Hapus penjualan ke ${row.buyerName}`}
+                onClick={() => onDelete(row)}
+              >
+                <Trash2 className="h-4 w-4 text-[var(--status-danger)]" aria-hidden />
+              </Button>
+            </>
+          )}
         </TableRowActions>
       ),
     },
@@ -151,7 +158,7 @@ export function SalesHistoryTable({
       initialSortDirection="desc"
       emptyIcon={ShoppingCart}
       emptyTitle="Belum ada data penjualan"
-      emptySubtitle="Catat transaksi pertama Anda lewat tab Form Input."
+      emptySubtitle="Klik tombol Input Data Penjualan untuk mencatat transaksi pertama."
       ariaLabel="Tabel riwayat penjualan"
     />
   )
